@@ -51,7 +51,7 @@ INSERT INTO users ('fname', 'lname')
       VALUES (1, 3), (1, 1);
 
 INSERT INTO replies ('question_id', 'body', 'author_id', 'parent_reply_id')
-     VALUES (1, "You're a N00B.", 2, NULL), (1, "Dont be mean", 4, 1);
+     VALUES (1, "You're a N00B.", 2, NULL), (1, "Dont be mean"	, 4, 1);
 
 INSERT INTO question_likes ('question_id', 'liker_id')
     VALUES (1, 3);
