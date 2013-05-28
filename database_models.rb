@@ -26,44 +26,46 @@ class Table
 
   def method_missing(field)
     field = field.to_s
-    raise "not a valid field" unless @fields.has_key?(field)
+    raise NoMethodError.new("#{field} is not a valid field") unless @fields.has_key?(field)
     @fields[field]
   end
 
   def self.find(table, field, value)
     rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM ? WHERE ? = ?", table, field, value)
+      "SELECT * FROM #{table} WHERE #{field} = ?", value)
     rows.map { |row| self.new(row) }
   end
 
   def self.find_by_id(table, id)
-    rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM ? WHERE id = ?", table, id)
-    self.new(rows.first)
+    row = QuestionsDatabase.instance.get_first_row(
+      "SELECT * FROM #{table} WHERE id = ?", id)
+    self.new(row)
+  end
+
+  def self.query(query, *values)
+    rows = QuestionsDatabase.instance.execute(query, *values)
+    rows.map { |row| self.new(row) }
   end
 
 end
-
-
 
 
 class Question < Table
 
   def self.find_by_id(id)
     super('questions', id)
-    # rows = QuestionsDatabase.instance.execute(
-#       "SELECT * FROM questions WHERE id = ?", id)
-#     self.new(rows.first)
   end
 
   def self.find_by_author_id(id)
-    rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM questions WHERE author_id = ?", id)
-    rows.map { |row| self.new(row) }
+    self.find('questions', 'author_id', id)
   end
 
   def replies
     Reply::find_by_question_id(@fields['id'])
+  end
+
+  def followers
+    QuestionFollower.followers_for_question_id(@fields['id'])
   end
 
 end
@@ -73,9 +75,7 @@ end
 class User < Table
 
   def self.find_by_id(id)
-    row = QuestionsDatabase.instance.first_row(
-      "SELECT * FROM users WHERE id = ?", id)
-    self.new(row)
+    super('users', id)
   end
 
   def self.find_by_name(fname, lname)
@@ -92,11 +92,50 @@ class User < Table
     Reply::find_by_author_id(@fields['id'])
   end
 
+  def followed_questions
+    QuestionFollower.followed_questions_for_user_id(@fields['id'])
+  end
+
 end
 
 
 
 class QuestionFollower < Table
+
+  def self.followers_for_question_id(question_id)
+    query = <<-SQL
+     SELECT users.*
+       FROM users
+       JOIN question_followers
+         ON users.id = follower_id
+      WHERE question_id = ?;
+    SQL
+    self.query(query, question_id)
+  end
+
+  def self.followed_questions_for_user_id(user_id)
+    query = <<-SQL
+     SELECT questions.*
+       FROM questions
+       JOIN question_followers
+         ON questions.id = question_id
+      WHERE follower_id = ?;
+    SQL
+    self.query(query, user_id)
+  end
+
+  def self.most_followed_questions(n)
+    query = <<-SQL
+      SELECT questions.*
+        FROM questions
+        JOIN question_followers
+          ON questions.id = question_id
+    GROUP BY question_id
+    ORDER BY COUNT(*) desc
+       LIMIT ?
+    SQL
+    Question.query(query, n)
+  end
 
 end
 
@@ -105,21 +144,15 @@ end
 class Reply < Table
 
   def self.find_by_id(id)
-    rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM replies WHERE id = ?", id)
-    self.new(rows.first)
+    super('replies', id)
   end
 
   def self.find_by_author_id(id)
-    rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM replies WHERE author_id = ?", id)
-    rows.map { |row| self.new(row) }
+    self.find('replies', 'author_id', id)
   end
 
   def self.find_by_question_id(id)
-    rows = QuestionsDatabase.instance.execute(
-      "SELECT * FROM replies WHERE question_id = ?", id)
-    rows.map { |row| self.new(row) }
+    self.find('replies', 'question_id', id)
   end
 
   def author
@@ -134,10 +167,55 @@ class Reply < Table
     Reply.find_by_id(@fields['parent_reply_id'])
   end
 
+  def child_replies
+    query = <<-SQL
+    SELECT child.*
+      FROM replies child
+      JOIN replies parent
+        ON child.parent_reply_id = parent.id
+     WHERE parent.id = ?;
+    SQL
+    Reply.query(query, @fields['id'])
+  end
+
 end
 
 
-
 class QuestionLike < Table
+
+  def self.likers_for_question_id(question_id)
+    query = <<-SQL
+     SELECT users.*
+       FROM users
+       JOIN question_likes
+         ON users.id = liker_id
+      WHERE question_id = ?;
+    SQL
+    self.query(query, question_id)
+  end
+
+  def self.liked_questions_for_user_id(user_id)
+    query = <<-SQL
+     SELECT questions.*
+       FROM questions
+       JOIN question_likes
+         ON questions.id = question_id
+      WHERE liker_id = ?;
+    SQL
+    self.query(query, user_id)
+  end
+
+  def self.num_likes_for_question_id(question_id)
+    query = <<-SQL
+     SELECT COUNT(*) likes
+       FROM users
+       JOIN question_likes
+         ON users.id = liker_id
+      WHERE question_id = ?;
+    SQL
+    row = QuestionsDatabase.instance.get_first_row(
+      query, question_id)
+    row['likes']
+  end
 
 end
