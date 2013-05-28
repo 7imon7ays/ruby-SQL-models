@@ -65,11 +65,26 @@ class Question < Table
   end
 
   def followers
-    QuestionFollower.followers_for_question_id(@fields['id'])
+    QuestionFollower::followers_for_question_id(@fields['id'])
+  end
+
+  def likers
+    QuestionLike::likers_for_question_id(@fields['id'])
+  end
+
+  def num_likes
+    QuestionLike::num_likes_for_question_id(@fields['id'])
+  end
+
+  def self.most_liked(n)
+    QuestionLike.most_liked_questions(n)
+  end
+
+  def self.most_followed(n)
+    QuestionFollower.most_followed_questions(n)
   end
 
 end
-
 
 
 class User < Table
@@ -94,6 +109,26 @@ class User < Table
 
   def followed_questions
     QuestionFollower.followed_questions_for_user_id(@fields['id'])
+  end
+
+  def liked_questions
+    QuestionLike::liked_questions_for_user_id(@fields['id'])
+  end
+
+  def average_karma
+    query = <<-SQL
+     SELECT (COUNT(*) / (
+        SELECT COUNT(*)
+          FROM questions
+         WHERE author_id = 1)) karma
+       FROM questions
+       JOIN question_likes
+         ON questions.id = question_id
+      WHERE author_id = ?;
+    SQL
+    row = QuestionsDatabase.instance.get_first_row(
+      query, @fields['id'])
+    row['karma']
   end
 
 end
@@ -218,4 +253,22 @@ class QuestionLike < Table
     row['likes']
   end
 
+  def self.most_liked_questions(n)
+    query = <<-SQL
+      SELECT questions.*
+        FROM questions
+        JOIN question_likes
+          ON questions.id = question_id
+    GROUP BY question_id
+    ORDER BY COUNT(*) desc
+       LIMIT ?
+    SQL
+    Question.query(query, n)
+  end
 end
+
+
+
+
+
+
