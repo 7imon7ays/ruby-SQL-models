@@ -40,18 +40,30 @@ CREATE TABLE question_likes (
 	FOREIGN KEY(liker_id) REFERENCES users(id)
 );
 
+CREATE TABLE tags (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+	question_id INTEGER NOT NULL,
+
+  FOREIGN KEY(question_id) REFERENCES questions(id),
+);
+
 
 INSERT INTO questions ('title', 'body', 'author_id')
-     VALUES ('N00B question:', "What's a keyboard?", 1);
+     VALUES ('N00B question:', "What's a keyboard?", 1)
+		        ('Relativity', 'E=MC^2?', 3);
 
 INSERT INTO users ('fname', 'lname')
      VALUES ('Albert', 'Einstein'), ('Kurt', 'Godel'), ('Jon', 'Wolverton'), ('Simon', 'Chaffetz');
 
- INSERT INTO question_followers ('question_id', 'follower_id')
-      VALUES (1, 3), (1, 1);
+INSERT INTO question_followers ('question_id', 'follower_id')
+     VALUES (1, 3), (1, 1), (3, 2);
 
 INSERT INTO replies ('question_id', 'body', 'author_id', 'parent_reply_id')
      VALUES (1, "You're a N00B.", 2, NULL), (1, "Dont be mean"	, 4, 1);
 
 INSERT INTO question_likes ('question_id', 'liker_id')
-    VALUES (1, 3);
+     VALUES (1, 3);
+
+INSERT INTO tags ('name', 'question_id')
+     VALUES ('computers', 1), ('pysics', 2);

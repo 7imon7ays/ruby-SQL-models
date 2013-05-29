@@ -20,11 +20,13 @@ end
 
 class Table
 
+  attr_accessor :fields
+
   def initialize(fields)
     @fields = fields
   end
 
-  def method_missing(field)
+  def method_missing(field, value=nil)
     field = field.to_s
     raise NoMethodError.new("#{field} is not a valid field") unless @fields.has_key?(field)
     @fields[field]
@@ -47,10 +49,37 @@ class Table
     rows.map { |row| self.new(row) }
   end
 
+  # def save(table)
+  #   placeholders = @fields.keys.map { "?" }
+  #   field_holders = placeholders.join(",")
+  #   value_holders = placeholders.join(",")
+  #   insert = <<-SQL
+  #     INSERT INTO #{table} (#{field_holders})
+  #     VALUES (#{value_holders});
+  #   SQL
+  #   p insert
+  #   args = @fields.keys + @fields.values
+  #   p args
+  #   QuestionsDatabase.instance.execute(*args)
+  # end
+
+
 end
 
 
 class Question < Table
+
+  def title=(value)
+    @fields['title'] = value
+  end
+
+  def body=(value)
+    @fields['body'] = value
+  end
+
+  def author=(value)
+    @fields['author'] = value
+  end
 
   def self.find_by_id(id)
     super('questions', id)
@@ -84,10 +113,35 @@ class Question < Table
     QuestionFollower.most_followed_questions(n)
   end
 
+  def save
+    if @fields.has_key?('id')
+      update = <<-SQL
+      UPDATE questions
+         SET 'title' = ?, 'body' = ?, 'author_id' = ?
+       WHERE id = ?;
+      SQL
+      QuestionsDatabase.instance.execute(update, title, body, author_id, id)
+    else
+      insert = <<-SQL
+        INSERT INTO questions ('title', 'body', 'author_id')
+        VALUES (?, ?, ?)
+      SQL
+      QuestionsDatabase.instance.execute(insert, title, body, author_id)
+    end
+  end
+
 end
 
 
 class User < Table
+
+  def fname=(value)
+    @fields['fname'] = value
+  end
+
+  def lname=(value)
+    @fields['lname'] = value
+  end
 
   def self.find_by_id(id)
     super('users', id)
@@ -129,6 +183,23 @@ class User < Table
     row = QuestionsDatabase.instance.get_first_row(
       query, @fields['id'])
     row['karma']
+  end
+
+  def save
+    if @fields.has_key?('id')
+      update = <<-SQL
+      UPDATE users
+         SET 'fname' = ?, 'lname' = ?
+       WHERE id = ?;
+      SQL
+      QuestionsDatabase.instance.execute(update, fname, lname, id)
+    else
+      insert = <<-SQL
+        INSERT INTO users ('fname', 'lname')
+        VALUES (?, ?)
+      SQL
+      QuestionsDatabase.instance.execute(insert, fname, lname)
+    end
   end
 
 end
@@ -178,6 +249,22 @@ end
 
 class Reply < Table
 
+  def body=(value)
+    @fields['body'] = value
+  end
+
+  def author_id=(value)
+    @fields['author_id'] = value
+  end
+
+  def question_id=(value)
+    @fields['question_id'] = value
+  end
+
+  def parent_reply_id=(value)
+    @fields['parent_reply_id'] = value
+  end
+
   def self.find_by_id(id)
     super('replies', id)
   end
@@ -213,6 +300,23 @@ class Reply < Table
     Reply.query(query, @fields['id'])
   end
 
+  def save
+    if @fields.has_key?('id')
+      update = <<-SQL
+      UPDATE replies
+         SET 'body' = ?, 'author_id' = ?, 'question_id' = ?, 'parent_reply_id' = ?
+       WHERE id = ?;
+      SQL
+      QuestionsDatabase.instance.execute(update, body, author_id, question_id, parent_reply_id, id)
+    else
+      insert = <<-SQL
+        INSERT INTO replies
+          ('body', 'author_id', 'question_id', 'parent_reply_id')
+        VALUES (?, ?, ?, ?)
+      SQL
+      QuestionsDatabase.instance.execute(insert, body, author_id, question_id, parent_reply_id)
+    end
+  end
 end
 
 
