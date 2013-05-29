@@ -371,8 +371,36 @@ class QuestionLike < Table
   end
 end
 
+class Tag < Table
 
+  def self.most_popular
+    query = "SELECT * FROM tags"
+    tags = self.query(query)
+    tags.map do |tag|
+      [tag, tag.most_popular(1).first]
+    end
+  end
 
+  def most_popular(n)
+    query = <<-SQL
+    SELECT likes_per_question.*
+      FROM question_tags
+      JOIN (
+        SELECT questions.*, COUNT(*) likes
+          FROM questions
+          JOIN question_likes
+            ON questions.id = question_id
+      GROUP BY question_id) likes_per_question
+         ON likes_per_question.id = question_tags.question_id
+      WHERE tag_id = ?
+      ORDER BY likes desc
+      LIMIT ?;
+    SQL
+    Question.query(query, id, n)
+  end
 
+end
 
+class QuestionTag < Table
 
+end

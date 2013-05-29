@@ -42,15 +42,20 @@ CREATE TABLE question_likes (
 
 CREATE TABLE tags (
   id INTEGER PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE question_tags (
+	tag_id INTEGER NOT NULL,
 	question_id INTEGER NOT NULL,
 
-  FOREIGN KEY(question_id) REFERENCES questions(id),
+	FOREIGN KEY(question_id) REFERENCES questions(id),
+	FOREIGN KEY(tag_id) REFERENCES tags(id)
 );
 
 
 INSERT INTO questions ('title', 'body', 'author_id')
-     VALUES ('N00B question:', "What's a keyboard?", 1)
+     VALUES ('N00B question:', "What's a keyboard?", 1),
 		        ('Relativity', 'E=MC^2?', 3);
 
 INSERT INTO users ('fname', 'lname')
@@ -65,5 +70,8 @@ INSERT INTO replies ('question_id', 'body', 'author_id', 'parent_reply_id')
 INSERT INTO question_likes ('question_id', 'liker_id')
      VALUES (1, 3);
 
-INSERT INTO tags ('name', 'question_id')
-     VALUES ('computers', 1), ('pysics', 2);
+INSERT INTO tags ('name')
+     VALUES ('computers'), ('pysics');
+
+INSERT INTO question_tags ('tag_id', 'question_id')
+		 VALUES (1, 1), (2, 2);
